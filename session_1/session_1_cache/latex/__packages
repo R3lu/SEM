@@ -1,0 +1,14 @@
+base
+haven
+dplyr
+ggplot2
+tidyr
+pander
+lattice
+survival
+Formula
+Hmisc
+xtable
+GGally
+ggthemes
+gridExtra

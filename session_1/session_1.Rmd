@@ -1,0 +1,380 @@
+---
+title: "SEM 1"
+author: "Simon Roth"
+date: "21.4.2017"
+output:
+  html_document: 
+    theme: spacelab
+  pdf_document:
+    fig_caption: yes
+    number_sections: yes
+header-includes:
+- \usepackage{pdflscape}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+- \usepackage{rotating}
+---
+
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = F # Whether to display code along with its results
+                      , eval = T # Whether to evaluate the code and include its results
+                      , results = "hide" # this at deafult is in end much more efficient
+                      , cache = F # Whether to cache results for future renders (efficient!)
+                      , warning = F # Whether to display errors
+                      , message = F # Whether to display messages
+                      , error = F # mybe turn on
+                      , tidy = F # Whether to reformat code in a tidy way when displaying it
+                      #, root.dir = normalizePath('/Users/simonroth/Dropbox/methods/git/tidy_textmining/my_summary/') 
+                      #, root.dir = normalizePath("E:/Dropbox/methods/git/tidy_textmining")
+                      # in order to calculate relative paths
+                      , fig.width = 6
+                      , fig.height = 4
+                      , fig.align = "center"
+                      )
+```
+
+
+# Datensatz einladen
+
+```{r load}
+#rm(list=ls())
+library(haven)
+
+pa <- '/Users/simonroth/Dropbox/uni/MA/4_semester/SEM/data/allbus.dta/ZA5250_v2-0-0.dta'
+all <- read_stata(pa)
+```
+
+a. german: Staatsbürgerschaft
+* 1 Ja, ausschließlich
+* 2 Ja, neben 2. Staatsbürgerschaft
+* 3 Nein
+
+b. eastwest: Erhebungsgebiet
+* 1 West 
+* 2 Ost
+
+```{r filter}
+library(dplyr)
+
+all_1 <- all %>% 
+  filter(german == 1 | german == 2) %>%
+  filter(eastwest == 1)
+```
+
+## Itembatterien 
+
+**Islamophobie:** 
+
+* mm01: ISLAMAUSUEBUNG IN BRD BESCHRAENKEN
+    + -10 Befragter gehört einer islamischen Religionsgemeinschaft an (Code 1 in rd03)
+    + -9
+    + 1 Stimme überhaupt nicht zu
+    + 2
+    + 3
+    + 4
+    + 5 
+    + 6 
+    + 7 Stimme voll und ganz zu
+* mm02: ISLAM PASST IN DIE DEUTSCHE GESELLSCHAFT
+* mm03: ANWESENHEIT VON MUSLIMEN BRINGT KONFLIKT
+* mm04: STAAT SOLLTE ISLAM. GRUPPEN BEOBACHTEN
+* mm05: MUSLIMISCHER BUERGERMEISTER IN ORDNUNG
+* mm06: UNTER MUSLIMEN SIND VIELE REL. FANATIKER
+
+
+<!-- **Einbürgerung:** -->
+
+<!-- * mn01: EINBUERGERUNG: SOLLTE HIER GEBOREN SEIN -->
+<!-- * mn02: EINBUERGERUNG: DEUTSCHE ABSTAMMUNG HABEN -->
+<!-- * mn03: EINBUERGERUNG: DEUTSCH SPRECHEN -->
+<!-- * mn04: EINBUERGERUNG: LANGE BEI UNS GELEBT -->
+<!-- * mn05: EINBUERGERUNG: LEBENSSTILANPASSUNG -->
+<!-- * mn06: EINBUERGERUNG: IN CHRISTLICH.KIRCHE SEIN -->
+<!-- * mn07: EINBUERGERUNG: KEINE STRAFTATEN -->
+<!-- * mn08: EINBUERGERUNG: EIGENER LEBENSUNTERHALT -->
+<!-- * mn09: EINBUERGERUNG: ZU GRUNDGESETZ BEKENNEN -->
+<!-- * mn10: KOENNEN MIGRANTEN ECHTE DEUTSCHE WERDEN? -->
+
+
+**Deutschein:**
+
+* mn11: DEUTSCH SEIN: DEUTSCHE STAATSBUERGERSCH.
+* mn12: DEUTSCH SEIN: CHRISTL.RELIGION ZUGEHOER.
+* mn13: DEUTSCH SEIN: BEKENNTNIS ZUR DEMOKRATIE
+* mn14: DEUTSCH SEIN: VIELE DEUTSCHE BEKANNTE
+* mn15: DEUTSCH SEIN: ALTE STAATSANGEH.AUFGEBEN
+* mn16: DEUTSCH SEIN: VERBUNDENHEIT ZU DEUTSCHL.
+* mn17: DEUTSCH SEIN: ALTE GEBRAEUCHE ABLEGEN
+* mn18: DEUTSCH SEIN: GUT DEUTSCH SPRECHEN
+* mn19: DEUTSCH SEIN: WESTLICHE WERTE TEILEN
+* mn20: DEUTSCH SEIN: MIND. 1 ELTERNTEIL DEUTSCH
+* mn21: DEUTSCH SEIN: IN DEUTSCHLAND GEBOREN
+
+
+
+
+# Daten partitionieren
+
+* sex: GESCHLECHT (Int.: Geschlecht der befragten Person ohne Befragen eintragen!)
+    + 1 Männlich 
+    + 2 Weiblich
+* age: ALTER: metrisch
+* agec: ALTER: KATEGORISIERT 6
+    + 18 - 29 Jahre
+    + 30 - 44 Jahre
+    + 45 - 59 Jahre
+    + 60 - 74 Jahre
+    + 75 - 89 Jahre
+    + Über 89 Jahre
+* isced97: BEFR.: ISCED 1997 - 6 STUFEN: International Standard Classification of Education (ISCED) 1997, 6 Stufen
+    1. Level - Primary education or first stage of basic education
+    2. Level - Lower secondary or second stage of basic education
+    3. Level - (Upper) secondary education
+    4. Level - Post-secondary non-tertiary education
+    5. Level - First stage of tertiary education
+    6. Level - Second stage of tertiary education
+
+
+```{r man}
+### subset data
+all_2 <- all_1 %>%
+  select(respid, sex, 
+         age, agec, isced97,
+         num_range('mn', 11:21),
+         num_range('mm0', 1:6))
+
+islam <- c('stop_islam', 'islam_is_ger', 'muslim_confl', 'muslim_surv', 'muslim_major', 'muslim_rad')
+deutsch <- c('ger_citiz', 'christ_conf', 'pro_demo', 'ger_friends', 'only_ger','dis_roots', 'ger_affinity', 'speak_ger', 'western_val', 'parent_ger', "born_ger")
+
+colnames(all_2) <- c(c('respid', 'sex', 'age', 'agec', 'isced97'), deutsch, islam)
+
+### clean from -11 and other NA
+all_3 <- all_2
+all_3 <- lapply(all_2, FUN = function(x){ifelse(x > 0, x, NA)}) %>%
+  as.data.frame()
+
+### recode variables
+all_3 <- all_3 %>%
+  mutate(gender = ifelse(sex %in% 2, 1, 0))  # F = 1, M = 0)
+```
+
+
+# Visualisierungen
+
+Der Boxplot zeigt die quantile der **Altersverteilung**. Der Median liegt bei 50 Lebensjahren, wobei 50% der Befragten zwischen 30 und 70 Jahre alt sind. Die Verteilung des Alters nähert sich einer gaussischen Normalverteilung an.
+
+```{r box, result = "asis", fig.height=3, fig.width=4}
+library(ggplot2)
+library(ggthemes)
+
+### Boxplot
+gg_1 <- all_3 %>%
+  ggplot(aes(x = factor(""), y = age)) +
+  geom_boxplot() +
+  theme_map() 
+
+mea <- mean(all_3$age, na.rm = T)
+s <- sd(all_3$age, na.rm = T)
+
+mask <- ifelse(all_3$age > (mea + s) | 
+                 all_3$age < (mea - s), T, F)
+
+gg_2 <- cbind(all_3, mask) %>%
+  ggplot(aes(age)) +
+  geom_histogram(aes(fill = mask)) +
+  scale_y_discrete() +
+  scale_fill_manual(values = c("black", "grey")) +
+  coord_flip() +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  labs(x = "", y = "")
+
+library(gridExtra)
+grid.arrange(gg_1, gg_2, ncol = 2)
+```
+
+
+\newpage
+
+```{r vis, results="asis", fig.height = 8}
+library(tidyr)
+
+### help function
+norm_dens <- function(dat) {
+    mi <- min(dat$value)
+    ma <- max(dat$value)
+    grid <- seq(mi, ma, by = .1)
+    return(data.frame( 
+    predicted = grid,
+    density = dnorm(grid, mean(dat$value), sd(dat$value))
+    ))
+  }
+
+
+### Islamophobie
+#names(all_3)
+gg_data <- all_3[, c(1,7:16)] %>%
+  gather(key, value, -respid) %>% # , -trt
+  na.omit()
+
+# melt(
+#   messy,
+#   variable.name = "key",
+#   value.names = "value",
+#   id.vars = c("id", "trt")
+#   )
+
+normaldens <- gg_data %>%
+  group_by(key) %>%
+  do(norm_dens(.))
+
+m <- gg_data %>%
+  group_by(key) %>%
+  summarise(m1 = mean(value))
+
+gg_h1 <- ggplot(data = gg_data, aes(x = value)) + 
+    facet_wrap(~ key, ncol = 3) + 
+    geom_histogram(aes(y = ..density..), binwidth = 1, alpha = .5) + 
+    geom_line(data = normaldens, 
+              aes(x = predicted, y = density),
+              colour = "red") + 
+    geom_vline(data = m, aes(xintercept = m$m1)) +
+    labs(x = "", y = "", title = "Itembatterie: Deutsch-Sein") + theme_classic() 
+
+gg_h1
+```
+
+*Wie wichtig sind die folgenden Dinge, damit Sie sagen würden, dass eine Person mit ausländischen Wurzeln ein wirklicher Deutscher/eine wirkliche Deutsche wird?*. Religiöse sowie ethnische Voraussetzungen scheinen für die Mehrheit der Befragten irrelevant. Entscheidend sind hingegen kulturelle Faktoren, wie Demokratieverständnis und soziale Assimilation. Nur 2 von 10 Variablen sind annäherend normalverteilt und weisen ansonst eine Tendenz zu den Skalenrändern auf.
+
+
+\newpage
+\blandscape
+```{r, echo = F, results="asis", fig.width=13, fig.height=10, cache = T}
+#install.packages("GGally")
+library(GGally) 
+library(ggthemes)
+
+my_fun_lo <- function(data, mapping, method="loess", ...){
+      p <- ggplot(data = data, mapping = mapping) + 
+      #geom_point(alpha = 0.1) + 
+      geom_smooth(method = method, color = "black")
+      p
+}
+
+my_fun_mid <- function(data, mapping, ...){
+      p <- ggplot(data = data, mapping = mapping) + 
+      #geom_point(alpha = 0.1) + 
+      geom_histogram(alpha = .5, binwidth = 1) 
+      p
+}
+
+# Default loess curve    
+
+gg_p1 <- ggpairs(all_3[, c(7:16)], 
+               lower = list(continuous = my_fun_lo),
+               diag = list(continuous = my_fun_mid)) + 
+               theme_classic() + 
+               ggtitle("Itembatterie: Deutsch-Sein")
+
+gg_p1
+```
+\elandscape
+
+
+```{r, results="asis"}
+### Deutsch-Sein
+gg_data <- all_3[, c(1,17:22)] %>%
+  gather(key, value, -respid) %>%# , -trt
+  na.omit()
+
+normaldens <- gg_data %>%
+  group_by(key) %>%
+  do(norm_dens(.))
+
+m <- gg_data %>%
+  group_by(key) %>%
+  summarise(m1 = mean(value))
+
+gg_h2 <-  ggplot(data = gg_data, aes(x = value)) + 
+    facet_wrap(~ key, ncol = 3) + 
+    geom_histogram(aes(y = ..density..), binwidth = 1, alpha = .5) + 
+    geom_line(data = normaldens, 
+              aes(x = predicted, y = density),
+              colour = "red") + 
+    geom_vline(data = m, aes(xintercept = m$m1)) +
+    ylim(0, .4) + labs(x = "", y = "", title = "Itembatterie: Islamophobie") +  
+    theme_classic()
+
+gg_h2
+```
+
+Auch bei den Fragen zur Akzeptanz von Muslimen und des Islams zeigt sich die kulturelle Komponente. Während Muslime von einer Mehrheit der Deutschen als nicht besonders gefährlich oder ungefährlich eingestuft werden, wird die Deutsche Identität nicht mit dem Islam in Verbindung gebracht wird. Eine vermeintliche Islamisierung wird von den meisten Befragten nicht beobachtet. Im Gegenzug zu den Verteilungen zum *Deutsch-sein* zeigt sich beim Thema Islam eine stärkere Polarisierung (heavy-tailed).
+
+
+```{r, echo = F, results="asis", fig.width=10, fig.height= 6, cache = T}
+gg_p2 <- ggpairs(all_3[, c(17:22)], 
+               lower = list(continuous = my_fun_lo),
+               diag = list(continuous = my_fun_mid)) + 
+          theme_classic() + ggtitle("Itembatterie: Islamophobie")
+
+gg_p2
+```
+
+
+```{r, echo = F}
+library(pander)
+library(Hmisc)
+
+#names(all_3)
+mcor <- all_3 %>%
+  select(-respid, -gender, -sex, -agec) %>%
+  #na.omit()
+  #cor(na.rm = T) %>%
+  #round(2)
+  as.matrix() %>%
+  rcorr(type="pearson") 
+
+mcor <- round(mcor[[1]], 2)
+
+#str(mcor)
+# lower.tri(x, diag = FALSE)
+# upper.tri(x, diag = FALSE)
+
+
+# Hide upper triangle
+mcor_table <- mcor
+mcor_table[lower.tri(mcor_table)]<- ''
+# upper<-as.data.frame(mcor)
+```
+
+
+\newpage
+\blandscape
+```{r xtable, results="asis", eval = F}
+library(xtable)
+print(xtable(mcor_table, caption="Pearson's correlation matrix"),
+      rotate.colnames = T, size = "small", comment = F, missing = "?")
+```
+
+
+```{r tableHTML, results="asis"}
+library(xtable)
+print(xtable(mcor_table, caption="Pearson's correlation matrix", booktabs = T),
+      include.rownames = T, size = "small", comment = F, missing = "?", type ="html")
+```
+
+Wie die Korrelationstabelle deutlich offen legt gibt es einen linearen Zusammenhang zwischen Alter und der islamophobischen Eeinstellungen. Während die Korrelation für die Itembatterie: Islamophobie sinnvoll interpretiert werden kann, liegen bei den *Deutsch-Sein* Variablen oft eine non-lineare Assoziation vor, wodurch Pearson-R seine Aussagekraft verliert. 
+\elandscape
+
+\vspace{2cm}
+
+```{r, results="asis", eval = F, echo = F}
+# devtools::install_github('talgalili/heatmaply')
+library(heatmaply)
+library(ggplot2)
+library(gplots)
+library(viridis)
+
+heatmaply_cor(mcor, Rowv = NULL, Colv = NULL, colors =  viridis(100))
+```
+
