@@ -3,11 +3,11 @@ title: "SEM 1"
 author: "Simon Roth"
 date: "21.4.2017"
 output:
-  html_document: 
-    theme: spacelab
   pdf_document:
     fig_caption: yes
     number_sections: yes
+  html_document:
+    theme: spacelab
 header-includes:
 - \usepackage{pdflscape}
 - \newcommand{\blandscape}{\begin{landscape}}
@@ -156,6 +156,12 @@ all_3 <- lapply(all_2, FUN = function(x){ifelse(x > 0, x, NA)}) %>%
 ### recode variables
 all_3 <- all_3 %>%
   mutate(gender = ifelse(sex %in% 2, 1, 0))  # F = 1, M = 0)
+
+
+# for(i in seq_along(colnames(all_3))){
+#   print(colnames(all_3[i]))
+#   print(table(is.na(all_3[,i])))
+# }
 ```
 
 
@@ -171,7 +177,9 @@ library(ggthemes)
 gg_1 <- all_3 %>%
   ggplot(aes(x = factor(""), y = age)) +
   geom_boxplot() +
-  theme_map() 
+  theme_classic() +
+  coord_flip() +
+  labs(x="")
 
 mea <- mean(all_3$age, na.rm = T)
 s <- sd(all_3$age, na.rm = T)
@@ -184,13 +192,13 @@ gg_2 <- cbind(all_3, mask) %>%
   geom_histogram(aes(fill = mask)) +
   scale_y_discrete() +
   scale_fill_manual(values = c("black", "grey")) +
-  coord_flip() +
+  #scale_x_reverse() +
   theme_classic() + 
   theme(legend.position = "none") +
   labs(x = "", y = "")
 
 library(gridExtra)
-grid.arrange(gg_1, gg_2, ncol = 2)
+grid.arrange(gg_2, gg_1, nrow = 2)
 ```
 
 
@@ -257,7 +265,8 @@ library(ggthemes)
 my_fun_lo <- function(data, mapping, method="loess", ...){
       p <- ggplot(data = data, mapping = mapping) + 
       #geom_point(alpha = 0.1) + 
-      geom_smooth(method = method, color = "black")
+      geom_smooth(method = method, color = "black", alpha = .7) 
+      # geom_smooth(method = "lm", color = "red", se = F, linetype = "dashed")
       p
 }
 
@@ -277,6 +286,7 @@ gg_p1 <- ggpairs(all_3[, c(7:16)],
                ggtitle("Itembatterie: Deutsch-Sein")
 
 gg_p1
+
 ```
 \elandscape
 
@@ -311,14 +321,33 @@ gg_h2
 Auch bei den Fragen zur Akzeptanz von Muslimen und des Islams zeigt sich die kulturelle Komponente. Während Muslime von einer Mehrheit der Deutschen als nicht besonders gefährlich oder ungefährlich eingestuft werden, wird die Deutsche Identität nicht mit dem Islam in Verbindung gebracht wird. Eine vermeintliche Islamisierung wird von den meisten Befragten nicht beobachtet. Im Gegenzug zu den Verteilungen zum *Deutsch-sein* zeigt sich beim Thema Islam eine stärkere Polarisierung (heavy-tailed).
 
 
-```{r, echo = F, results="asis", fig.width=10, fig.height= 6, cache = T}
-gg_p2 <- ggpairs(all_3[, c(17:22)], 
+```{r, echo = F, results="asis"}
+options(warn=0) #default = 0
+dat <- na.omit(all_3[, c(17:22)])
+
+
+
+
+
+
+
+
+
+gg_p2 <- ggpairs(dat, 
                lower = list(continuous = my_fun_lo),
                diag = list(continuous = my_fun_mid)) + 
-          theme_classic() + ggtitle("Itembatterie: Islamophobie")
+               theme_classic() + 
+               ggtitle("Itembatterie: Islamophobie")
 
 gg_p2
 ```
+
+
+
+
+
+
+
 
 
 ```{r, echo = F}
@@ -350,14 +379,14 @@ mcor_table[lower.tri(mcor_table)]<- ''
 
 \newpage
 \blandscape
-```{r xtable, results="asis", eval = F}
+```{r xtable, results="asis", eval = T}
 library(xtable)
 print(xtable(mcor_table, caption="Pearson's correlation matrix"),
       rotate.colnames = T, size = "small", comment = F, missing = "?")
 ```
 
 
-```{r tableHTML, results="asis"}
+```{r tableHTML, results="asis", eval= F}
 library(xtable)
 print(xtable(mcor_table, caption="Pearson's correlation matrix", booktabs = T),
       include.rownames = T, size = "small", comment = F, missing = "?", type ="html")
@@ -365,6 +394,14 @@ print(xtable(mcor_table, caption="Pearson's correlation matrix", booktabs = T),
 
 Wie die Korrelationstabelle deutlich offen legt gibt es einen linearen Zusammenhang zwischen Alter und der islamophobischen Eeinstellungen. Während die Korrelation für die Itembatterie: Islamophobie sinnvoll interpretiert werden kann, liegen bei den *Deutsch-Sein* Variablen oft eine non-lineare Assoziation vor, wodurch Pearson-R seine Aussagekraft verliert. 
 \elandscape
+
+```{r formattable, results="asis", eval = F, echo = F}
+library(formattable)
+formattable(mcor_table, list())
+```
+
+
+
 
 \vspace{2cm}
 
@@ -377,4 +414,17 @@ library(viridis)
 
 heatmaply_cor(mcor, Rowv = NULL, Colv = NULL, colors =  viridis(100))
 ```
+
+```{r, eval = F, echo = T}
+path <- '/Users/simonroth/Dropbox/uni/MA/4_semester/SEM/data/allbus_final/'
+dat <- all_3
+
+save(dat, file = paste0(path, "allbus_Rdata.Rdata"))
+
+library(haven)
+write_sav(dat, paste0(path, "allbus_spss.sav"))
+```
+
+
+
 
