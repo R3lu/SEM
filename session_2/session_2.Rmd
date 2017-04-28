@@ -1,8 +1,9 @@
 ---
-title: "SEM 1"
+title: "SEM 2"
 author: "Simon Roth"
 date: "21.4.2017"
 output:
+  rmarkdown::github_document: default
   pdf_document:
     fig_caption: yes
     number_sections: yes
@@ -275,52 +276,110 @@ little_nation$p.value
 ```
 
 
+## 2.2 T-Tests
 
-
-## FEHLT Variable
-```{r}
+```{r, result = "asis", eval = T}
+### FEHLT Variable
 nation <- dat[,6:16]
 islam <- dat[,17:22]
 
-### Islamophobie
+# Islamophobie
 m <- c()
 for(i in 1:nrow(nation)){
   m[i] <- ifelse(any(is.na(nation[i,]) > 0), 1, 0)
 }
 dat$FEHLT_nation <- m
 
-names(dat)
-log1 <- glm(FEHLT_nation ~ gender + age + isced97, data = dat)
-# summary(log1)
 
 
-### Nationalbewusstsein
+# Nationalbewusstsein
 m <- c()
 for(i in 1:nrow(islam)){
   m[i] <- ifelse(any(is.na(islam[i,]) > 0), 1, 0)
 }
 dat$FEHLT_islam <- m
 
-log2 <- glm(FEHLT_islam ~ gender + age + isced97, data = dat)
-# summary(log2)
+names(dat)
+t_dat <- dat %>% 
+  select(respid, gender, age, isced97, FEHLT_nation, FEHLT_islam)
+
+head(t_dat)
+
+### Bildung
+library(tidyr)
+
+gg_bildung <- t_dat %>%
+  select(isced97, FEHLT_nation, FEHLT_islam) %>%
+  gather(key, value, -isced97) %>%
+  ggplot(aes(isced97, fill = factor(value))) +
+    geom_bar(alpha = .5) +
+    scale_fill_gdocs(name = "Missing Value", labels = c("No", "Yes")) +
+    theme_classic() +
+    theme(legend.position = "none") +
+    facet_wrap(~ key) 
+
+gg_age <- t_dat %>%
+  select(age, FEHLT_nation, FEHLT_islam) %>%
+  gather(key, value, -age) %>%
+  ggplot(aes(age, fill = factor(value))) +
+    geom_density(alpha = .5) +
+    scale_fill_gdocs(name = "Missing Value", labels = c("No", "Yes")) +
+    theme_classic() +
+    theme(legend.position = "none") +
+    facet_wrap(~ key) 
+
+gg_gender <- t_dat %>%
+  select(gender, FEHLT_nation, FEHLT_islam) %>%
+  gather(key, value, -gender) %>%
+  ggplot(aes(gender, fill = factor(gender))) +
+    geom_bar(alpha = .5) +
+    scale_fill_gdocs(name = "Missing Value", labels = c("No", "Yes")) +
+    theme_classic() +
+    theme(legend.position = "none") +
+    facet_wrap(~ key) 
+
+library(gridExtra)
+grid.arrange(gg_bildung, gg_age, gg_gender, ncol = 3)
 ```
+
+```{r, results=""}
+### isced
+fit_isced_nation <-aov(FEHLT_nation ~ isced97, data=dat)
+fit_isced_islam <- aov(FEHLT_islam ~ isced97, data=dat)
+
+### age
+fit_age_nation <- aov(FEHLT_nation ~ age, data=dat)
+fit_age_islam <- aov(FEHLT_islam ~ age, data=dat)
+
+### gender
+fit_gender_nation <- t.test(FEHLT_nation ~ gender, data = dat)
+fit_gender_islam <- t.test(FEHLT_islam ~ gender, data = dat)
+```
+
+
+
+## 2.3 Logistic Regression
+
+
 
 ```{r, results = "asis", comment = F}
 #names(dat)
+log1 <- glm(FEHLT_nation ~ gender + age + isced97,
+            family = binomial(link = "logit"),
+            data = dat)
+# summary(log1)
+
+
+log2 <- glm(FEHLT_islam ~ gender + age + isced97,
+            family = binomial(link = "logit"),
+            data = dat)
+# summary(log2)
+
 library(stargazer)
 stargazer(list(log1, log2),
           type = "latex",
           header = F,
           apply.coef = exp,
-          apply.se = exp)
+          apply.se = exp, 
+          title = "Logistic Regression for Missing Values")
 ```
-
-
-
-
-
-
-
-
-
-
