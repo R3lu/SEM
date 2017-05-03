@@ -1,14 +1,14 @@
 ---
 title: "SEM 2"
 author: "Simon Roth"
-date: "21.4.2017"
+date: "02.05.2017"
 output:
-  rmarkdown::github_document: default
   pdf_document:
     fig_caption: yes
     number_sections: yes
   html_document:
     theme: spacelab
+  rmarkdown::github_document: default
 header-includes:
 - \usepackage{pdflscape}
 - \newcommand{\blandscape}{\begin{landscape}}
@@ -34,33 +34,11 @@ knitr::opts_chunk$set(echo = F # Whether to display code along with its results
                       )
 ```
 
-<style type="text/css">
-body, td {
-   font-size: 14px;
-}
-r.code{
-  font-size: 10px;
-}
-pre {
-  font-size: 10px
-}
-</style>
-
-# Datensatz einladen
-
-```{r load}
+```{r load, echo=F}
 rm(list=ls())
 load("/Users/simonroth/Dropbox/uni/MA/4_semester/SEM/data/allbus_final/allbus_Rdata.Rdata")
 ```
 
-a. german: Staatsbürgerschaft
-* 1 Ja, ausschließlich
-* 2 Ja, neben 2. Staatsbürgerschaft
-* 3 Nein
-
-b. eastwest: Erhebungsgebiet
-* 1 West 
-* 2 Ost
 
 ## Itembatterien 
 
@@ -82,19 +60,6 @@ b. eastwest: Erhebungsgebiet
 * mm05: MUSLIMISCHER BUERGERMEISTER IN ORDNUNG
 * mm06: UNTER MUSLIMEN SIND VIELE REL. FANATIKER
 
-
-<!-- **Einbürgerung:** -->
-
-<!-- * mn01: EINBUERGERUNG: SOLLTE HIER GEBOREN SEIN -->
-<!-- * mn02: EINBUERGERUNG: DEUTSCHE ABSTAMMUNG HABEN -->
-<!-- * mn03: EINBUERGERUNG: DEUTSCH SPRECHEN -->
-<!-- * mn04: EINBUERGERUNG: LANGE BEI UNS GELEBT -->
-<!-- * mn05: EINBUERGERUNG: LEBENSSTILANPASSUNG -->
-<!-- * mn06: EINBUERGERUNG: IN CHRISTLICH.KIRCHE SEIN -->
-<!-- * mn07: EINBUERGERUNG: KEINE STRAFTATEN -->
-<!-- * mn08: EINBUERGERUNG: EIGENER LEBENSUNTERHALT -->
-<!-- * mn09: EINBUERGERUNG: ZU GRUNDGESETZ BEKENNEN -->
-<!-- * mn10: KOENNEN MIGRANTEN ECHTE DEUTSCHE WERDEN? -->
 
 
 **Nationalbewusstsein:**
@@ -136,7 +101,17 @@ b. eastwest: Erhebungsgebiet
 
 ## Missing Pattern
 
-NZ (Fragebogen- Split): Befragter hat aufgrund eines methodischen oder inhaltlichen Splits eine Frage oder Item- batterie nicht gestellt bekommen.
+Wie deutlich an den unten stehen Schaubildern abzulesen ist, hat die Itembatterie
+Nationalbewusstsein deutlich mehr missing values. Dies ist auf einen Fragebogensplit 
+(NZ) zurückzuführen, wobei einer befragten Person aufgrund eines methodischen oder 
+inhaltlichen Splits eine Frage oder Itembatterie nicht gestellt worden ist. An dieser
+Stelle wäre zu diskutieren ob Personen welche nicht befragt worden sind ausgeschlossen 
+oder gesondert betrachtet werden sollten. Klar ist, imputiert werden könne diese Fälle
+nicht, doch könnte es allein aufgrund des Splits zu Verzerrungen des Samples kommen.
+Der durchschnittliche Anteil an Item-Nonrespnse beträgt zwischen 2 und 4 %. Der Nutzen 
+oder "Schaden" den eine Imputation der fehelden Werte nach sich ziehen könnte,
+bleibt wegen der geringen Ausfälle vermutlich gering. 
+
 
 ```{r, results = "asis"}
 library(dplyr)
@@ -172,7 +147,7 @@ gg1 <- miss %>%
   geom_bar(stat = "identity", alpha = .7) + 
   theme_classic() + 
   scale_fill_gdocs() +
-  theme(axis.text.x = element_text(angle = 90), legend.position = "none") +
+  theme(axis.text.x = element_text(angle=45), legend.position = "none") +
   geom_text(aes(y = prop + 20, label = lab), angle = 90) +
   scale_y_continuous(labels = paste0(seq(0,100,10), "%"), 
                      breaks = seq(0,100,10), limits = c(0,100))
@@ -196,17 +171,18 @@ ggplot_missing <- function(x){
     scale_fill_grey(name = "",
                     labels = c("Present","Missing")) +
     theme_minimal() + 
-    theme(axis.text.x  = element_text(angle=45, vjust=0.5)) + 
+    theme(axis.text.x  = element_text(angle=45, vjust=0.5), 
+          legend.position = "none") + 
     labs(x = "Variables in Dataset",
          y = "Rows / observations")
 }
 
-ggplot_missing(dat)
+# ggplot_missing(dat)
 ```
 
-## Load VIM package for Visualization and Imputation of Missing Values
 
 ```{r, result = "asis", eval = F}
+## Load VIM package for Visualization and Imputation of Missing Values
 library(VIM)
 
 ## in number
@@ -243,9 +219,8 @@ cor_tab[lower.tri(cor_tab)]<- ''
 # cor_tab
 ```
 
-\newpage
 \blandscape
-```{r xtable, results="asis", eval = T}
+```{r xtable, results="asis", eval = F}
 library(xtable)
 print(xtable(cor_tab, caption="Pearson's correlation matrix of missing values"),
       rotate.colnames = T, size = "small", comment = F, missing = "?")
@@ -253,52 +228,144 @@ print(xtable(cor_tab, caption="Pearson's correlation matrix of missing values"),
 \elandscape
 
 
+## 1.1 Variablen FEHLT_
+```{r, eval = T, echo = T, results="asis"}
+islam <- dat[,17:22]
+nation <- dat[,6:16]
 
-## Little Test
+# Islamophobie
+m <- c()
+mn <- c()
+for(i in 1:nrow(nation)){
+  mn[i] <- sum(is.na(nation[i,]))
+  m[i] <- ifelse(any(is.na(nation[i,]) > 0), 1, 0)
+}
+as.data.frame(table(mn))
+dat$FEHLT_nation <- m
+
+# Nationalbewusstsein
+m <- c()
+mn <- c()
+for(i in 1:nrow(islam)){
+  mn[i] <- sum(is.na(islam[i,]))
+  m[i] <- ifelse(any(is.na(islam[i,]) > 0), 1, 0)
+}
+as.data.frame(table(mn))
+dat$FEHLT_islam <- m
+```
+
+
+Die Variablen `Fehlt_nation/_islam` sind beides Indikatoren für missing
+values der ganzen Item-Batterie. Doch können wir die Informationen einfach so 
+aggregieren? Personen die nur 1 mal oder auch 6-11 mal nicht geantwortetet haben
+werden in einen Topf gesteckt, wobei die Motive sehr unterschiedlich sein könnten.
+Z.B. bei Fragen zum Nationalbewusstsein haben mehr Personen nur eine Frage 
+nicht beantwortet, gegenüber denen die die Antwort komplett verweigert haben. 
+
+
+
+## 2.1 Little Test
 *A Test of Missing Completely at Random for Multivariate Data with Missing Values*
-Roderick J. A. Little (1988)
+Roderick J. A. Little (1988). Eine Weiterentwicklung findet sich bei Jamshidian and Jalal (2010),
+die die MCAR Annahme basierend auf dem Vergleich der Kovarinazen zwischen Gruppen. Die Gruppen 
+bilden sich aus gleichen Missing Data Patterns. 
 
 **Nullhypothesis: missing values pattern are missing completly at random**
 
 
-```{r, eval = F, echo = T}
-# install.packages("BaylorEdPsych")
-# install.packages("mvnmle")
+```{r, eval = T, echo = T, results="asis", error = T}
+library(MissMech)
 
-library(BaylorEdPsych)
-little_islam <- LittleMCAR(islam)
-little_islam$amount.missing
-little_islam$p.value
+p1 <- TestMCARNormality(islam)
+p1$pnormality
 
-little_nation <- LittleMCAR(nation)
-little_nation$amount.missing
-little_nation$p.value
+p2 <- TestMCARNormality(nation)
+```
+
+Der Test auf auf MCAR ergibt eine signifikante Abweichung (p = 0.01) von einer multivariat und
+normalverteilten Streung der Missing Values für die Itembatterie Islamophobie. Damit muss die 
+Annahme von MCAR zurück gewießen werden. An dieser Stelle kann leider kein weiterer MCAR Test für die Ittembaterie Nationalbewusstsein durchgeführt werden, da neben dem Item-Non-Repsonse aufgrund des Splits keine weiteren Missing Data Pattern in den Daten zu finden sind. 
+
+```{r, results = "asis", comment = F, eval = F}
+### 2.2 T-Tests
+
+## isced
+fit_isced_nation <-aov(isced97 ~ FEHLT_nation, data=dat)
+fit_isced_islam <- aov(isced97 ~ FEHLT_islam, data=dat)
+
+library(tidyr)
+library(broom)
+library(stargazer)
+
+anov_table1 <- broom::tidy(fit_isced_nation)
+stargazer(anov_table1, 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Varianzanalyse für ISCED (Fehlt nation)")
+
+
+anov_table2 <- broom::tidy(fit_isced_islam)
+stargazer(anov_table2, 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Varianzanalyse für ISCED (Fehlt islam)")
+
+
+### age
+fit_age_nation <- aov(FEHLT_nation ~ age, data=dat)
+fit_age_islam <- aov(FEHLT_islam ~ age, data=dat)
+
+anov_table3 <- broom::tidy(fit_age_nation)
+stargazer(anov_table3, 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Varianzanalyse für Alter (Fehlt nation)")
+
+anov_table4 <- broom::tidy(fit_age_islam)
+stargazer(anov_table4, 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Varianzanalyse für Alter (Fehlt islam)")
+
+
+### gender
+fit_gender_nation <- t.test(FEHLT_nation ~ gender, data = dat)
+fit_gender_islam <- t.test(FEHLT_islam ~ gender, data = dat)
+
+anov_table5 <- broom::tidy(fit_gender_nation)
+stargazer(t(anov_table5), 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Zweiseitiger T-Test für Geschlecht (Fehlt nation)")
+
+anov_table6 <- broom::tidy(fit_gender_islam)
+stargazer(t(anov_table6), 
+          summary = F,
+          header = F,
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Zweiseitiger T-Test für Geschlecht (Fehlt islam)")
+
 ```
 
 
-## 2.2 T-Tests
-
-```{r, result = "asis", eval = T}
-### FEHLT Variable
-nation <- dat[,6:16]
-islam <- dat[,17:22]
-
-# Islamophobie
-m <- c()
-for(i in 1:nrow(nation)){
-  m[i] <- ifelse(any(is.na(nation[i,]) > 0), 1, 0)
-}
-dat$FEHLT_nation <- m
-
-
-
-# Nationalbewusstsein
-m <- c()
-for(i in 1:nrow(islam)){
-  m[i] <- ifelse(any(is.na(islam[i,]) > 0), 1, 0)
-}
-dat$FEHLT_islam <- m
-
+```{r, result = "asis", eval = F, fig.height=8}
 names(dat)
 t_dat <- dat %>% 
   select(respid, gender, age, isced97, FEHLT_nation, FEHLT_islam)
@@ -339,32 +406,25 @@ gg_gender <- t_dat %>%
     facet_wrap(~ key) 
 
 library(gridExtra)
-grid.arrange(gg_bildung, gg_age, gg_gender, ncol = 3)
+grid.arrange(gg_bildung, gg_age, gg_gender, ncol = 1)
 ```
-
-```{r, results=""}
-### isced
-fit_isced_nation <-aov(FEHLT_nation ~ isced97, data=dat)
-fit_isced_islam <- aov(FEHLT_islam ~ isced97, data=dat)
-
-### age
-fit_age_nation <- aov(FEHLT_nation ~ age, data=dat)
-fit_age_islam <- aov(FEHLT_islam ~ age, data=dat)
-
-### gender
-fit_gender_nation <- t.test(FEHLT_nation ~ gender, data = dat)
-fit_gender_islam <- t.test(FEHLT_islam ~ gender, data = dat)
-```
-
 
 
 ## 2.3 Logistic Regression
+
+Die logistische Regression weißt auf keinen signifikanten Effekt von Bildung, 
+Alter und Geschlecht hin. Zwar weisst die Variable ISCED, einen visuell wahrnehmbaren 
+Unterschied bei der Beantwortung der Islamophobie Item-Batterie auf, dennoch besitzt sie 
+kaum Vorhersagekraft (hoher SE). Ein Vergleich der AIC für Modell 1 und 2
+bestätigt diese Vermutung und veringert sich bei Hinzunahme von Bildung nur marginal. Neben schwachen Tendenzen bei der Bildung gibt es keine weiteren Aossoziationen zwischen den hier diskutierten sozioökonomischen Variablen 
+und Missings in der Item-Batterie für Islamophobie. Im Gegensatz dazu gibt es keine relevanten
+Effekte bei der Item-batterie Nationalbewusstsein. 
 
 
 
 ```{r, results = "asis", comment = F}
 #names(dat)
-log1 <- glm(FEHLT_nation ~ gender + age + isced97,
+log1 <- glm(FEHLT_islam ~ gender + age,
             family = binomial(link = "logit"),
             data = dat)
 # summary(log1)
@@ -373,13 +433,20 @@ log1 <- glm(FEHLT_nation ~ gender + age + isced97,
 log2 <- glm(FEHLT_islam ~ gender + age + isced97,
             family = binomial(link = "logit"),
             data = dat)
+
+log3 <- glm(FEHLT_nation ~ gender + age + isced97,
+            family = binomial(link = "logit"),
+            data = dat)
 # summary(log2)
 
 library(stargazer)
-stargazer(list(log1, log2),
+stargazer(list(log1, log2, log3),
           type = "latex",
+          #type = "html",
+          style = "ajps",
           header = F,
           apply.coef = exp,
           apply.se = exp, 
+          #align = TRUE,
           title = "Logistic Regression for Missing Values")
 ```

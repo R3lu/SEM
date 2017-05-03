@@ -11,31 +11,6 @@ Simon Roth
 
 
 
-<style type="text/css">
-body, td {
-   font-size: 14px;
-}
-r.code{
-  font-size: 10px;
-}
-pre {
-  font-size: 10px
-}
-</style>
-Datensatz einladen
-==================
-
-1.  german: Staatsbürgerschaft
-
--   1 Ja, ausschließlich
--   2 Ja, neben 2. Staatsbürgerschaft
--   3 Nein
-
-1.  eastwest: Erhebungsgebiet
-
--   1 West
--   2 Ost
-
 Itembatterien
 -------------
 
@@ -57,17 +32,6 @@ Itembatterien
 -   mm05: MUSLIMISCHER BUERGERMEISTER IN ORDNUNG
 -   mm06: UNTER MUSLIMEN SIND VIELE REL. FANATIKER
 
-<!-- **Einbürgerung:** -->
-<!-- * mn01: EINBUERGERUNG: SOLLTE HIER GEBOREN SEIN -->
-<!-- * mn02: EINBUERGERUNG: DEUTSCHE ABSTAMMUNG HABEN -->
-<!-- * mn03: EINBUERGERUNG: DEUTSCH SPRECHEN -->
-<!-- * mn04: EINBUERGERUNG: LANGE BEI UNS GELEBT -->
-<!-- * mn05: EINBUERGERUNG: LEBENSSTILANPASSUNG -->
-<!-- * mn06: EINBUERGERUNG: IN CHRISTLICH.KIRCHE SEIN -->
-<!-- * mn07: EINBUERGERUNG: KEINE STRAFTATEN -->
-<!-- * mn08: EINBUERGERUNG: EIGENER LEBENSUNTERHALT -->
-<!-- * mn09: EINBUERGERUNG: ZU GRUNDGESETZ BEKENNEN -->
-<!-- * mn10: KOENNEN MIGRANTEN ECHTE DEUTSCHE WERDEN? -->
 **Nationalbewusstsein:**
 
 -   mn11: DEUTSCH SEIN: DEUTSCHE STAATSBUERGERSCH.
@@ -112,9 +76,6 @@ NZ (Fragebogen- Split): Befragter hat aufgrund eines methodischen oder inhaltlic
 
 <img src="session_2_files/figure-markdown_github/unnamed-chunk-1-1.png" style="display: block; margin: auto;" /><img src="session_2_files/figure-markdown_github/unnamed-chunk-1-2.png" style="display: block; margin: auto;" />
 
-Load VIM package for Visualization and Imputation of Missing Values
--------------------------------------------------------------------
-
 Little Test
 -----------
 
@@ -143,3 +104,163 @@ little_nation$p.value
 
 2.3 Logistic Regression
 -----------------------
+
+<table style="text-align:center">
+<caption>
+<strong>Logistic Regression for Missing Values</strong>
+</caption>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+<strong>FEHLT\_nation</strong>
+</td>
+<td>
+<strong>FEHLT\_islam</strong>
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+<strong>Model 1</strong>
+</td>
+<td>
+<strong>Model 2</strong>
+</td>
+</tr>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+gender
+</td>
+<td>
+1.007
+</td>
+<td>
+1.066
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1.092)
+</td>
+<td>
+(1.206)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+age
+</td>
+<td>
+1.005
+</td>
+<td>
+0.994
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1.003)
+</td>
+<td>
+(1.005)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+isced97
+</td>
+<td>
+0.949
+</td>
+<td>
+0.727
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1.042)
+</td>
+<td>
+(1.096)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Constant
+</td>
+<td>
+1.131
+</td>
+<td>
+0.256
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+</td>
+<td>
+(1.239)
+</td>
+<td>
+(1.543)
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+N
+</td>
+<td>
+2116
+</td>
+<td>
+2116
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+Log Likelihood
+</td>
+<td>
+-1455.950
+</td>
+<td>
+-464.681
+</td>
+</tr>
+<tr>
+<td style="text-align:left">
+AIC
+</td>
+<td>
+2919.900
+</td>
+<td>
+937.362
+</td>
+</tr>
+<tr>
+<td colspan="3" style="border-bottom: 1px solid black">
+</td>
+</tr>
+<tr>
+<td colspan="3" style="text-align:left">
+<sup>***</sup>p &lt; .01; <sup>**</sup>p &lt; .05; <sup>*</sup>p &lt; .1
+</td>
+</tr>
+</table>
