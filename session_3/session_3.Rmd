@@ -1,7 +1,7 @@
 ---
-title: "SEM 2"
+title: "SEM 3"
 author: "Simon Roth"
-date: "02.05.2017"
+date: "04.05.2017"
 output:
   pdf_document:
     fig_caption: yes
@@ -225,10 +225,22 @@ head(stacked.data)
 
 ####monitor convergence
 plot(islam_mean2_imp,layout = c(2, 3)) 
+```
 
+
+## stochastic ...
+
+```{r}
 islam_mean2_imp <- mice(islam_mean2)
 plot(islam_mean2_imp,layout = c(2, 3)) 
 ```
+
+
+
+
+
+
+
 
 ## merge data
 ```{r, results = "asis", comment = F, eval = T}

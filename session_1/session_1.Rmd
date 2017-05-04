@@ -148,20 +148,34 @@ deutsch <- c('ger_citiz', 'christ_conf', 'pro_demo', 'ger_friends', 'only_ger','
 
 colnames(all_2) <- c(c('respid', 'sex', 'age', 'agec', 'isced97'), deutsch, islam)
 
-### clean from -11 and other NA
-all_3 <- all_2
-all_3 <- lapply(all_2, FUN = function(x){ifelse(x > 0, x, NA)}) %>%
-  as.data.frame()
+library(gdata)
+
+### create split variables
+all_2$sp_nation <- NA
+all_2$sp_islam <- NA
+
+for(i in 1:nrow(all_2)){
+  all_2$sp_nation[i] <- ifelse(any(isUnknown(all_2[i, 6:16], 
+                                unknown=c(-10,-11)) == T), 1, 0)
+  all_2$sp_islam[i] <- ifelse(any(isUnknown(all_2[i, 17:22], 
+                                unknown=c(-10,-11)) == T), 1, 0)
+}
+
+### clean data
+names(all_2)
+for(i in seq_along(colnames(all_2))){
+  # set  tpo NA
+  all_2[[i]] <- unknownToNA(all_2[[i]], 
+                            unknown=c(-9, -10, -11, -32))
+  
+  # cast numeric
+  all_2[[i]] <- as.numeric(all_2[[i]])
+}
 
 ### recode variables
-all_3 <- all_3 %>%
+all_3 <- all_2 %>%
   mutate(gender = ifelse(sex %in% 2, 1, 0))  # F = 1, M = 0)
 
-
-# for(i in seq_along(colnames(all_3))){
-#   print(colnames(all_3[i]))
-#   print(table(is.na(all_3[,i])))
-# }
 ```
 
 
@@ -186,6 +200,7 @@ s <- sd(all_3$age, na.rm = T)
 
 mask <- ifelse(all_3$age > (mea + s) | 
                  all_3$age < (mea - s), T, F)
+
 
 gg_2 <- cbind(all_3, mask) %>%
   ggplot(aes(age)) +
@@ -278,8 +293,7 @@ my_fun_mid <- function(data, mapping, ...){
 }
 
 # Default loess curve    
-
-gg_p1 <- ggpairs(all_3[, c(7:16)], 
+gg_p1 <- ggpairs(all_3[, c(6:16)], 
                lower = list(continuous = my_fun_lo),
                diag = list(continuous = my_fun_mid)) + 
                theme_classic() + 
@@ -325,14 +339,7 @@ Auch bei den Fragen zur Akzeptanz von Muslimen und des Islams zeigt sich die kul
 options(warn=0) #default = 0
 dat <- na.omit(all_3[, c(17:22)])
 
-
-
-
-
-
-
-
-
+library(GGally)
 gg_p2 <- ggpairs(dat, 
                lower = list(continuous = my_fun_lo),
                diag = list(continuous = my_fun_mid)) + 
@@ -356,7 +363,7 @@ library(Hmisc)
 
 #names(all_3)
 mcor <- all_3 %>%
-  select(-respid, -gender, -sex, -agec) %>%
+  select(-respid, -gender, -sex, -agec, -sp_islam, -sp_nation) %>%
   #na.omit()
   #cor(na.rm = T) %>%
   #round(2)
@@ -424,7 +431,3 @@ save(dat, file = paste0(path, "allbus_Rdata.Rdata"))
 library(haven)
 write_sav(dat, paste0(path, "allbus_spss.sav"))
 ```
-
-
-
-

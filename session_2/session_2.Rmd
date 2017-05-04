@@ -116,20 +116,33 @@ bleibt wegen der geringen Ausfälle vermutlich gering.
 ```{r, results = "asis"}
 library(dplyr)
 
-
-li <- list()
-for(i in seq_along(colnames(dat))){
-    tab <- dat[[i]] %>%
+li1 <- list()
+normal <- dat[,c(1:5,17:22)]
+for(i in seq_along(colnames(normal))){
+    tab <- normal[[i]] %>%
     is.na() %>%
     table() %>%
     prop.table() * 100
     tab1 <- as.data.frame(tab)
-    tab1$var <- colnames(dat)[i]
+    tab1$var <- colnames(normal)[i]
     tab1$ord <- i
-    li[[i]] <- tab1
+    li1[[i]] <- tab1
 }
 
-miss <- do.call("rbind", li)
+li2 <- list()
+split_dat <- dat[,c(6:16)] %>% filter(dat$sp_nation == 0)
+for(i in seq_along(colnames(split_dat))){
+    tab <- split_dat[[i]] %>%
+    is.na() %>%
+    table() %>%
+    prop.table() * 100
+    tab1 <- as.data.frame(tab)
+    tab1$var <- colnames(split_dat)[i]
+    tab1$ord <- i
+    li2[[i]] <- tab1
+}
+
+miss <- do.call("rbind", c(li1, li2))
 colnames(miss) <- c("fehlt", "prop", "var", "ord")
 
 
@@ -139,12 +152,17 @@ library(ggthemes)
 miss$var <- factor(miss$var, levels = miss$var[order(miss$ord)])
 miss$prop <- round(miss$prop, 2)
 
+miss %>%
+  filter(fehlt == F) %>%
+  mutate(mis = 100 - prop)
+
+
 lab <- paste0("NA = ", miss$prop, "%")
-lab[unique(miss$var)] <- ''
+lab[miss$fehlt == F] <- ''
 
 gg1 <- miss %>%
   ggplot(aes(x = var, y = prop, fill = fehlt)) +
-  geom_bar(stat = "identity", alpha = .7) + 
+  geom_bar(stat = "identity", alpha = .5) + 
   theme_classic() + 
   scale_fill_gdocs() +
   theme(axis.text.x = element_text(angle=45), legend.position = "none") +
@@ -237,9 +255,15 @@ nation <- dat[,6:16]
 m <- c()
 mn <- c()
 for(i in 1:nrow(nation)){
-  mn[i] <- sum(is.na(nation[i,]))
-  m[i] <- ifelse(any(is.na(nation[i,]) > 0), 1, 0)
+  if(dat$sp_nation[i] == 0){
+    mn[i] <- sum(is.na(nation[i,]))
+    m[i] <- ifelse(any(is.na(nation[i,]) > 0), 1, 0)
+  } else {
+    mn[i] <- NA
+    m[i] <- NA
+  }
 }
+
 as.data.frame(table(mn))
 dat$FEHLT_nation <- m
 
