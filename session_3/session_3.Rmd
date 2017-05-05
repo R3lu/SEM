@@ -76,8 +76,7 @@ load("/Users/simonroth/Dropbox/uni/MA/4_semester/SEM/data/allbus_final/allbus_Rd
 * mn20: DEUTSCH SEIN: MIND. 1 ELTERNTEIL DEUTSCH
 * mn21: DEUTSCH SEIN: IN DEUTSCHLAND GEBOREN
 
-
-# Daten partitionieren
+**Sozio-Ökonomische Variablen**
 
 * sex: GESCHLECHT (Int.: Geschlecht der befragten Person ohne Befragen eintragen!)
     + 1 Männlich 
@@ -99,170 +98,603 @@ load("/Users/simonroth/Dropbox/uni/MA/4_semester/SEM/data/allbus_final/allbus_Rd
     6. Level - Second stage of tertiary education
 * Allgemeiner Bildungsabschluss?
 
-## Listewise Deletion
 
-```{r, results = "asis", comment = F, eval = T}
+```{r}
+###--------------------------------------------------------------------------###
+### Listewise Deletion
+###--------------------------------------------------------------------------###
+
 library(dplyr)
 #glimpse(dat)
 
-# listwise muslim
+### Nationalbewusstsein
+nation_ld <- dat %>%
+  select(ger_citiz:born_ger) %>%
+  filter(dat$sp_nation == 0) %>%
+  na.omit()
+
+nation_ld_sum <- sapply(nation_ld, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame()
+
+nation_ld_sum$method <- "Listwise deletion"
+
+
+### Islamophobie
 islam_ld <- dat %>%
   select(stop_islam:muslim_rad) %>%
   na.omit()
 
-islam_ld <- sapply(islam_ld, plyr::each(mean, median, sd, var, min, max)) %>%
+islam_ld_sum <- sapply(islam_ld, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
   t() %>%
   as.data.frame()
 
-islam_ld$method <- "listwise deletion"
-
-### listwise nation
-nation_ld <- dat %>%
-  select(ger_citiz:born_ger) %>%
-  na.omit()
-
-nation_ld <- sapply(nation_ld, plyr::each(mean, median, sd, var, min, max)) %>%
-  t() %>%
-  as.data.frame()
-
-nation_ld$method <- "listwise deletion"
-
-library(stargazer)
-stargazer(islam_ld, 
-          summary = F,
-          header = F,
-          digits = 2,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Deskriptive Statistik für die Item-Batterie 
-          Islamophobie und Listewise Deletion fehlender Werte")
-
-stargazer(nation_ld, 
-          summary = F,
-          header = F,
-          digits = 2,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Deskriptive Statistik für die Item-Batterie 
-          Nationalbewusstsein und Listewise Deletion fehlender Werte")
+islam_ld_sum$method <- "Listwise deletion"
 ```
 
-## Mean Imputation 1
-
-```{r, results = "asis", comment = F, eval = T}
-### Islamophobie
-islam_mean1 <- dat %>% select(stop_islam:muslim_rad)
-for(i in 1:length(islam_mean1)){
-  islam_mean1[is.na(islam_mean1[[i]]), i] <- mean(islam_mean1[[i]], na.rm = T)
-}
-
-islam_mean1 <- sapply(islam_mean1, plyr::each(mean, median, sd, var, min, max)) %>%
-  t() %>%
-  as.data.frame()
-
-islam_mean1$method <- "mean imputation"
 
 
+```{r}
+###--------------------------------------------------------------------------###
+### Mean Imputation 1 (hand-made)
+###--------------------------------------------------------------------------###
 
 ### Nationalbewusstsein
-nation_mean1 <- dat %>% select(ger_citiz:born_ger)
+nation_mean1 <- dat %>% 
+  select(ger_citiz:born_ger) %>% 
+  filter(dat$sp_nation == 0)
+
 for(i in 1:length(nation_mean1)){
-  nation_mean1[is.na(nation_mean1[[i]]), i] <- mean(nation_mean1[[i]], na.rm = T)
+  nation_mean1[is.na(nation_mean1[[i]]), i] <- 
+    mean(nation_mean1[[i]], na.rm = T)
 }
 
-nation_mean1 <- sapply(nation_mean1, plyr::each(mean, median, sd, var, min, max)) %>%
+nation_mean1_sum <- sapply(nation_mean1, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
   t() %>%
   as.data.frame()
 
-nation_mean1$method <- "mean imputation"
+nation_mean1_sum$method <- "Unconditional mean imputation"
 
+### Islamophobie
+islam_mean1 <- dat %>% 
+  select(stop_islam:muslim_rad) %>% 
+  filter(dat$sp_islam == 0)
 
-stargazer(islam_mean1, 
-          summary = F,
-          header = F,
-          digits = 2,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Deskriptive Statistik für die Item-Batterie 
-          Islamophobie und Mean Imputation fehlender Werte")
+for(i in 1:length(islam_mean1)){
+  islam_mean1[is.na(islam_mean1[[i]]), i] <- 
+    mean(islam_mean1[[i]], na.rm = T)
+}
 
-stargazer(nation_mean1, 
-          summary = F,
-          header = F,
-          digits = 2,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Deskriptive Statistik für die Item-Batterie 
-          Islamophobie und Mean Imputation fehlender Werte")
+islam_mean1_sum <- sapply(islam_mean1, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame()
+
+islam_mean1_sum$method <- "Unconditional mean imputation"
 ```
 
 
 
-## Mean Imputation 2 (mice)
+# MICE
 
-```{r}
+MICE can handle both MAR and Missing Not at Random (MNAR) (p. 15).
+
+**Options for method:**
+
+* `pmm` 			Predictive mean matching (any)
+* `norm` 		Bayesian linear regression (numeric)
+* `norm.nob` 		Linear regression ignoring model error (numeric)
+* `norm.boot` 		Linear regression using bootstrap (numeric)
+* `norm.predict`	Linear regression, predicted values (numeric)
+* `mean` 		Unconditional mean imputation (numeric)
+* `2l.norm` 		Two-level normal imputation (numeric)
+* `2l.pan` 		Two-level normal imputation using pan (numeric)
+* `2lonly.mean` 	Imputation at level-2 of the class mean (numeric)
+* `2lonly.norm` 	Imputation at level-2 by Bayesian linear regression (numeric)
+* `2lonly.pmm`		Imputation at level-2 by Predictive mean matching (any)
+* `quadratic` 		Imputation of quadratic terms (numeric)
+* `logreg` 		Logistic regression (factor, 2 levels)
+* `logreg.boot` 	Logistic regression with bootstrap
+* `polyreg` 		Polytomous logistic regression (factor, >= 2 levels)
+* `polr`			Proportional odds model (ordered, >=2 levels)
+* `lda` 			Linear discriminant analysis (factor, >= 2 categories)
+* `cart`			Classification and regression trees (any)
+* `rf` 			Random forest imputations (any)
+* `ri` 			Random indicator method for nonignorable data (numeric)
+* `sample` 		Random sample from the observed values (any)
+* `fastpmm` 		Experimental: Fast predictive mean matching using C++ (any)
+
+The functions mice.impute.norm() and mice.impute.norm.nob() impute according
+to a linear imputation model, and are fast and efficient if the model residuals are close to normal. The second model ignores any sampling uncertainty of the imputation model, so it is only appropriate for very large samples
+
+
+
+```{r, eval = T}
+###--------------------------------------------------------------------------###
+### Mean Imputation 2 (mice)
+###--------------------------------------------------------------------------###
+## Unconditional mean imputation (numeric)
 library(mice)
+### Nationalbewusstsein
 
-islam_mean2 <- dat %>% select(stop_islam:muslim_rad)
-nation_mean2 <- dat %>% select(ger_citiz:born_ger)
+nation_mean2 <- dat %>% 
+  select(ger_citiz:born_ger)  %>%
+  filter(dat$sp_nation == 0)
 
-### run imputation
-# get default predictor matrix
-# Unconditional mean imputation (numeric)
+nation_mean2_imp <- mice(nation_mean2, 
+          method = rep("mean", 11))
+nation_mean2_imp_final <- complete(nation_mean2_imp)
+
+### summerize data
+nation_mean2_imp_final <- nation_mean2_imp_final %>% 
+  select(ger_citiz:born_ger)
+
+nation_mean2_imp_sum <- sapply(nation_mean2_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Unconditional mean imputation")
+
+
+### Islamophobie
+
+islam_mean2 <- dat %>% 
+  select(stop_islam:muslim_rad) %>% 
+  filter(dat$sp_islam == 0)
 
 islam_mean2_imp <- mice(islam_mean2, 
-          method = rep("mean", length(islam_mean2)))
+          method = c("mean", "mean", "mean", "mean", "mean", "mean"))
+islam_mean2_imp_final <- complete(islam_mean2_imp)
 
-stacked.data <- complete(islam_mean2_imp,
-                       "long",
-                       inc = F)
-head(stacked.data)
+### summerize data
+islam_mean2_imp_final <- islam_mean2_imp_final %>% 
+  select(stop_islam:muslim_rad)
 
-
-####monitor convergence
-plot(islam_mean2_imp,layout = c(2, 3)) 
+islam_mean2_imp_sum <- sapply(islam_mean2_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Unconditional mean imputation")
 ```
 
 
-## stochastic ...
+
+```{r, result = "asis"}
+###--------------------------------------------------------------------------###
+### Linear regression, predicted values (numeric; mice)
+###--------------------------------------------------------------------------###
+
+### Islamophobie
+
+# select data for imp islamophobia
+islam_lm <- dat %>% 
+  select(respid:age, isced97, stop_islam:muslim_rad)
+
+# get initial mice object
+ini <- mice(islam_lm, maxit = 0, print = F)
+
+attributes(ini)
+
+# default methods
+method <- ini$method
+# normal regression
+method <- c(rep("", 4) ,rep("norm.predict", 6))
+
+# postprocessing after imputation run
+post<-ini$post
+# avoid negative imputed values
+post <- c(rep("", 4) ,rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 6))
+
+### run linear imputation
+islam_lm_imp <- mice(islam_lm ,
+              method = method,
+              post = post,
+              seed = 1234)
+
+# plot(islam_lm_imp)
+
+islam_lm_imp_final <- complete(islam_lm_imp)
+table(is.na(islam_lm_imp_final$muslim_surv))
+
+### summerize data
+islam_lm_imp_final <- islam_lm_imp_final %>% 
+  select(stop_islam:muslim_rad)
+
+islam_lm_imp_sum <- sapply(islam_lm_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Linear regression, predicted values")
+```
+
+
 
 ```{r}
-islam_mean2_imp <- mice(islam_mean2)
-plot(islam_mean2_imp,layout = c(2, 3)) 
+###--------------------------------------------------------------------------###
+### Linear regression, predicted values (numeric; mice)
+###--------------------------------------------------------------------------###
+
+### Nationalbewusstsein
+
+nation_lm <- dat %>%
+  select(respid:age, isced97:born_ger) %>%
+  filter(dat$sp_nation == 0)
+
+
+### initialize impuation object
+# get initial mice object
+ini <- mice(nation_lm, maxit = 0, print = F)
+attributes(ini)
+
+
+### default settings
+# default methods
+method <- ini$method
+# normal regression
+method <- c(rep("", 4) ,rep("norm.predict", 11))
+
+# postprocessing after imputation run
+post<-ini$post
+# avoid negative imputed values
+post <- c(rep("", 4) ,rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 11))
+
+
+### run linear imputation
+nation_lm_imp <- mice(nation_lm ,
+              method = method,
+              post = post,
+              seed = 1234)
+
+# plot(nation_lm_imp)
+
+nation_lm_imp_final <- complete(nation_lm_imp)
+table(is.na(nation_lm_imp_final$x))
+
+### summerize data
+nation_lm_imp_final <- nation_lm_imp_final %>% 
+  select(ger_citiz:born_ger)
+
+nation_lm_imp_sum <- sapply(nation_lm_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Linear regression, predicted values")
 ```
 
 
 
+```{r}
+###--------------------------------------------------------------------------###
+### Predictive mean matching (any)
+###--------------------------------------------------------------------------###
+
+### Nationalbewusstsein
+# select data for imp 
+nation_pmm <- dat %>% 
+  select(respid:age, isced97, ger_citiz:born_ger)
+
+# default methods
+method <- c(rep("", 4) ,rep("pmm", 11))
+# avoid negative imputed values
+post <- c(rep("", 4) ,rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 11))
+
+### run linear imputation
+nation_pmm_imp <- mice(nation_pmm ,
+              method = method,
+              post = post,
+              seed = 1234)
+
+# plot(islam_lm_imp)
+
+nation_pmm_imp_final <- complete(nation_pmm_imp)
+table(is.na(nation_pmm_imp_final$muslim_surv))
+
+### summerize data
+nation_pmm_imp_final <- nation_pmm_imp_final %>% 
+  select(ger_citiz:born_ger)
+
+nation_pmm_imp_sum <- sapply(nation_pmm_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Predictive mean matching")
+```
 
 
 
+```{r}
+###--------------------------------------------------------------------------###
+### Predictive mean matching (any)
+###--------------------------------------------------------------------------###
+
+### Islamophobie
+# select data for imp 
+islam_pmm <- dat %>% 
+  select(respid:age, isced97, stop_islam:muslim_rad)
+
+# default methods
+method <- c(rep("", 4) ,rep("pmm", 6))
+# avoid negative imputed values
+post <- c(rep("", 4) ,rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 6))
+
+### run linear imputation
+islam_pmm_imp <- mice(islam_pmm,
+              method = method,
+              post = post,
+              seed = 1234)
+
+# plot(islam_lm_imp)
+
+islam_pmm_imp_final <- complete(islam_pmm_imp)
+#table(is.na(islam_lm_imp_final$muslim_surv))
+
+### summerize data
+islam_pmm_imp_final <- islam_pmm_imp_final %>% 
+  select(stop_islam:muslim_rad)
+
+islam_pmm_imp_sum <- sapply(islam_pmm_imp_final, 
+  plyr::each(mean, median, sd, var, min, max)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(method = "Predictive mean matching")
+```
 
 
-## merge data
+
+```{r}
+library(tidyr)
+library(mice)
+library(ggplot2)
+library(ggthemes)
+
+### help function
+norm_dens <- function(dat) {
+    mi <- min(dat$value)
+    ma <- max(dat$value)
+    grid <- seq(mi, ma, by = .1)
+    return(data.frame( 
+    predicted = grid,
+    density = dnorm(grid, mean(dat$value), sd(dat$value))
+    ))
+}
+
+### transform function
+# imp_object <- islam_lm_imp
+# dest_vars <- dv
+
+vis_imputation <- function(imp_object, dest_vars, means = F){
+  # finalize imp data
+  imp_stacked <- mice::complete(imp_object,
+                         "long",
+                         include = F)
+  # select main variables
+  imp_stacked <- imp_stacked[, c(".imp", ".id", dest_vars)]
+  
+  # imputation step
+  #levels(imp_stacked$.imp) <- paste("Imputation", 1:5)
+  
+  # NA matrix + melt
+  na_matrix <- as.data.frame(is.na(imp_object$data))
+  na_matrix$.id <- unique(imp_stacked$.id)
+  na_matrix$.imp <- imp_stacked$.imp[1:nrow(na_matrix)]
+
+  na_matrix_long <- na_matrix[, c(".imp", ".id", dest_vars)] %>% 
+    gather(var, miss, -.imp, -.id)
+
+  # imp data melt 
+  imp_dat_long <- imp_stacked %>% 
+    gather(var, value, -.imp, -.id)
+
+  # merge data
+  names(imp_dat_long)
+  gg_final <- cbind(imp_dat_long, miss = na_matrix_long$miss)
+
+  # visualize long format
+  normaldens <- gg_final %>%
+  group_by(var, miss) %>%
+  do(norm_dens(.))
+
+  gg1 <- ggplot(data = gg_final, aes(x = value, fill = miss)) + 
+    #geom_density(binwidth = 1, alpha = .5) +
+    geom_histogram(aes(y = ..density..), 
+                   position = position_dodge(), 
+                   binwidth = 1, 
+                   alpha = .5) +
+    geom_line(data = normaldens, 
+              aes(x = predicted, y = density, colour = miss)) + 
+    scale_colour_manual(name = "", 
+                      values = c("#3A5FCD", "#EE0000"),
+                      labels = c("observed", "imputed")) +
+    scale_fill_manual(name = "", 
+                      values = c("#3A5FCD", "#EE0000"),
+                      labels = c("observed", "imputed")) +
+    facet_wrap(~ var, scales = "free", ncol = 3) +
+    theme_classic() +
+    theme(legend.position = "bottom") + 
+    labs(x = "", y = "") 
+  
+  if(means){
+  # create means
+      m <- gg_final %>%
+      group_by(var, miss) %>%
+      summarise(m1 = mean(value))
+      
+      gg1 + geom_vline(data = m, aes(xintercept = m$m1, colour = miss))
+  } else { 
+    gg1
+  }
+}
+```
+
+
+
+## Häufigkeitsverteilungen für Nationalbewusstsein
+
+```{r, results = "asis", fig.height = 8}
+impute_vis <- function(data, methods, labels){
+  for(i in seq_along(methods)){
+    nation <- dat %>% 
+      select(respid:age, isced97, ger_citiz:born_ger)
+
+    # default methods
+    method <- c(rep("", 4) ,rep("pmm", 11))
+    # avoid negative imputed values
+    post <- c(rep("", 4) ,rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 11))
+
+    ### run linear imputation
+    nation_imp <- mice(nation,
+                  method = methods[i],
+                  post = post,
+                  seed = 1234, 
+                  printFlag = F)
+    
+    dv <- colnames(select(nation_imp$dat, ger_citiz:born_ger))
+    gg1 <- vis_imputation(nation_imp, dest_vars = dv, means = F) +
+      ggtitle(paste0("Item-Batterie Nationalbewusstsein: ", labels[i]))
+    print(gg1)
+  }
+  
+}
+
+methods <- c("mean",
+             "norm.predict",
+             "norm.boot",
+             "norm.nob",
+             "norm",
+             "pmm")
+
+labels <- c("Unconditional mean imputation",
+            "Linear regression, predicted values",
+            "Linear regression using bootstrap",
+            "Linear regression ignoring model error",
+            "Bayesian linear regression",
+            "Predictive mean matching")
+
+impute_vis(dat, methods, labels)
+```
+
+
+## Deskriptive Statistik für unterschiedlich imputierte Variablen Nationalbewusstsein
+
 ```{r, results = "asis", comment = F, eval = T}
-islam_all <- rbind(islam_ld, islam_mean1)
-islam_all <- cbind(vars = rownames(islam_all), islam_all) 
+nation_all <- rbind(nation_ld_sum,
+                   nation_mean1_sum,
+                   nation_lm_imp_sum,
+                   nation_pmm_imp_sum)
 
-names(islam_all)
-islam_all <- islam_all %>% arrange(vars)
-islam_all$vars[grep("1", islam_all$vars)] <- ''
+k_data <- 4
+nation_all <- cbind(vars = rep(rownames(nation_ld_sum), k_data), nation_all) 
 
-stargazer(islam_all, 
+nation_all <- nation_all %>% arrange(vars)
+nation_all <- nation_all %>% select(vars, method, mean:var)
+
+nation_all$vars[duplicated(nation_all$vars)] <- ''
+
+library(stargazer)
+stargazer(nation_all, 
           summary = F,
           header = F,
-          digits = 2,
+          digits = 2, 
+          rownames = F, 
           type = "latex",
           #type = "html",
           style = "ajps",
           title = "Alle")
-
 ```
 
 
+## Häufigkeitsverteilungen für Islamophobie
+
+```{r, results = "asis", fig.height = 4, eval = F}
+dv <- colnames(select(islam_mean2_imp$dat, stop_islam:muslim_rad))
+vis_imputation(imp_object = islam_mean2_imp, dest_vars = dv, means = F) +
+  ggtitle("Item-Batterie Islamophobie: Mean_Imputation")
+```
+
+
+```{r, results = "asis", fig.height = 4}
+### Islamophobie
+# select data for imp 
+
+impute_vis <- function(data, methods, labels){
+  for(i in seq_along(methods)){
+    islam <- data %>% 
+    select(respid:age, isced97, stop_islam:muslim_rad)
+    
+    # default methods
+    method <- c(rep("", 4) ,rep("pmm", 6))
+    # avoid negative imputed values
+    post <- c(rep("", 4) ,
+              rep("imp[[j]][,i]<-squeeze(imp[[j]][,i],c(0,7))", 6))
+    
+    ### run linear imputation
+    islam_imp <- mice(islam,
+                  method = methods[i],
+                  post = post,
+                  seed = 1234, 
+                  printFlag = F)
+    
+    dv <- colnames(select(islam_imp$dat, stop_islam:muslim_rad))
+    gg1 <- vis_imputation(islam_imp, dest_vars = dv, means = F) +
+      ggtitle(paste0("Item-Batterie Islamophobie: ", labels[i]))
+    print(gg1)
+  }
+  
+}
+
+methods <- c("mean",
+             "norm.predict",
+             "norm.boot",
+             "norm.nob",
+             "norm",
+             "pmm")
+
+labels <- c("Unconditional mean imputation",
+            "Linear regression, predicted values",
+            "Linear regression using bootstrap",
+            "Linear regression ignoring model error",
+            "Bayesian linear regression",
+            "Predictive mean matching")
+
+impute_vis(dat, methods, labels)
+```
+
+
+
+The function `mice.impute.pmm()` implements predictive mean matching (Little 1988), a general purpose semi-parametric imputation method. Its main virtues are that imputations are restricted to the observed values and that it can preserve non-linear relations even if the structural part of the imputation model is wrong. A disadvantage is that it may fail to produce enough between-imputation variability if the number of predictors is small.
+
+
+## Deskriptive Statistik für unterschiedlich imputierte Variablen Islamophobie
+
+```{r, results = "asis", comment = F, eval = T}
+islam_all <- rbind(islam_ld_sum,
+                   islam_mean1_sum,
+                   islam_lm_imp_sum,
+                   islam_pmm_imp_sum)
+
+k_data <- 4
+islam_all <- cbind(vars = rep(rownames(islam_ld_sum), k_data),
+                   islam_all) 
+
+islam_all <- islam_all %>% arrange(vars)
+islam_all <- islam_all %>% select(vars, method, mean:var)
+
+islam_all$vars[duplicated(islam_all$vars)] <- ''
+
+library(stargazer)
+stargazer(islam_all, 
+          summary = F,
+          header = F,
+          digits = 2, 
+          rownames = F, 
+          type = "latex",
+          #type = "html",
+          style = "ajps",
+          title = "Alle")
+```
 
 
 ```{r, result = "asis", eval = F}
@@ -310,62 +742,5 @@ print(xtable(cor_tab, caption="Pearson's correlation matrix of missing values"),
       rotate.colnames = T, size = "small", comment = F, missing = "?")
 ```
 \elandscape
-
-
-```{r, results = "asis", comment = F, eval = F}
-### 2.2 T-Tests
-
-## isced
-fit_isced_nation <-aov(isced97 ~ FEHLT_nation, data=dat)
-fit_isced_islam <- aov(isced97 ~ FEHLT_islam, data=dat)
-
-library(tidyr)
-library(broom)
-library(stargazer)
-
-anov_table1 <- broom::tidy(fit_isced_nation)
-stargazer(anov_table1, 
-          summary = F,
-          header = F,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Varianzanalyse für ISCED (Fehlt nation)")
-
-
-anov_table2 <- broom::tidy(fit_isced_islam)
-stargazer(anov_table2, 
-          summary = F,
-          header = F,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Varianzanalyse für ISCED (Fehlt islam)")
-
-
-### gender
-fit_gender_nation <- t.test(FEHLT_nation ~ gender, data = dat)
-fit_gender_islam <- t.test(FEHLT_islam ~ gender, data = dat)
-
-anov_table5 <- broom::tidy(fit_gender_nation)
-stargazer(t(anov_table5), 
-          summary = F,
-          header = F,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Zweiseitiger T-Test für Geschlecht (Fehlt nation)")
-
-anov_table6 <- broom::tidy(fit_gender_islam)
-stargazer(t(anov_table6), 
-          summary = F,
-          header = F,
-          type = "latex",
-          #type = "html",
-          style = "ajps",
-          title = "Zweiseitiger T-Test für Geschlecht (Fehlt islam)")
-
-```
-
 
 
